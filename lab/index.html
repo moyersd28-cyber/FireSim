@@ -3,13 +3,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FireSim Testing Lab</title>
 
 <style>
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
@@ -19,37 +17,26 @@ body {
     font-family: Arial, sans-serif;
 }
 
-header {
-    max-width: 1000px;
+header, main {
+    max-width: 1050px;
     margin: auto;
 }
 
-h1 {
-    color: #e34b3d;
-    margin-bottom: 5px;
-}
-
-.subtitle {
-    color: #aab2bd;
-}
-
-main {
-    max-width: 1000px;
-    margin: 25px auto;
-}
+h1 { color: #e34b3d; margin-bottom: 5px; }
+.subtitle, .muted { color: #aab2bd; }
 
 .panel {
     background: #242a32;
     border: 1px solid #39424d;
     border-radius: 10px;
     padding: 16px;
-    margin-bottom: 18px;
+    margin: 18px 0;
 }
 
 .tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 9px;
     margin-top: 12px;
 }
 
@@ -62,13 +49,10 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    border-color: #e34b3d;
-}
-
+button:hover { border-color: #e34b3d; }
 button.active {
-    background: #9e3029;
-    border-color: #e34b3d;
+    background: #96352e;
+    border-color: #ed695e;
 }
 
 #grid {
@@ -84,40 +68,71 @@ button.active {
 .cell {
     aspect-ratio: 1;
     min-width: 0;
-    background: #343d48;
-    cursor: crosshair;
+    position: relative;
     border-radius: 2px;
+    cursor: crosshair;
 }
 
-.cell:hover {
-    outline: 2px solid white;
-    z-index: 1;
-}
-
+.empty { background: #343d48; }
 .grass { background: #557d42; }
 .wood { background: #966037; }
 .concrete { background: #92999e; }
 .water { background: #287db5; }
-.empty { background: #343d48; }
+.burned { background: #29231f; }
+
+.cell.burning {
+    background: #ff6b18;
+    box-shadow: inset 0 0 8px #ffdc35;
+    animation: firePulse .45s infinite alternate;
+}
+
+.cell.burning::after {
+    content: "";
+    position: absolute;
+    inset: 20%;
+    background: #ffe45c;
+    border-radius: 50%;
+}
+
+@keyframes firePulse {
+    from { filter: brightness(.85); }
+    to { filter: brightness(1.35); }
+}
 
 #status {
-    color: #aab2bd;
     margin-top: 12px;
+    color: #c5ccd4;
     font-size: 14px;
 }
 
-@media (max-width: 600px) {
-    body {
-        padding: 12px;
-    }
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
 
-    #grid {
-        grid-template-columns: repeat(14, minmax(0, 1fr));
-    }
+.stat {
+    background: #343d48;
+    padding: 12px;
+    border-radius: 7px;
+}
 
-    button {
-        flex: 1;
-    }
+.stat strong {
+    display: block;
+    font-size: 23px;
+    color: #ff795e;
+}
+
+.stat span {
+    color: #bdc5ce;
+    font-size: 12px;
+}
+
+@media(max-width: 600px) {
+    body { padding: 12px; }
+    #grid { gap: 1px; }
+    button { flex: 1; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
 }
 </style>
 </head>
@@ -133,80 +148,359 @@ button.active {
 
 <main>
 
-    <section class="panel">
-        <h2>Material Selection</h2>
-        <p>Select a material, then click cells to paint the simulation grid.</p>
+<section class="panel">
+    <h2>Material Selection</h2>
+    <p class="muted">Choose a material, then paint the grid.</p>
 
-        <div class="tools">
-            <button class="active" data-material="empty">Empty</button>
-            <button data-material="grass">Grass</button>
-            <button data-material="wood">Wood</button>
-            <button data-material="concrete">Concrete</button>
-            <button data-material="water">Water</button>
+    <div class="tools">
+        <button class="material-button active" data-material="empty">Empty</button>
+        <button class="material-button" data-material="grass">Grass</button>
+        <button class="material-button" data-material="wood">Wood</button>
+        <button class="material-button" data-material="concrete">Concrete</button>
+        <button class="material-button" data-material="water">Water</button>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Fire Controls</h2>
+    <div class="tools">
+        <button class="mode-button active" data-mode="paint">Paint</button>
+        <button class="mode-button" data-mode="ignite">Ignite</button>
+        <button class="mode-button" data-mode="extinguish">Extinguish</button>
+    </div>
+
+    <div class="tools">
+        <button id="start">Start Simulation</button>
+        <button id="step">Advance One Step</button>
+        <button id="reset">Reset Fires</button>
+        <button id="clear">Clear Grid</button>
+    </div>
+
+    <div id="status">Ready. Build a test area and ignite a fuel cell.</div>
+</section>
+
+<section class="panel">
+    <h2>Simulation Grid</h2>
+    <div id="grid"></div>
+    <p class="muted">Each square represents one simulated cell.</p>
+</section>
+
+<section class="panel">
+    <h2>Incident Statistics</h2>
+    <div class="stats">
+        <div class="stat">
+            <strong id="activeFires">0</strong>
+            <span>Active fires</span>
         </div>
-    </section>
-
-    <section class="panel">
-        <h2>Simulation Grid</h2>
-        <div id="grid"></div>
-
-        <div id="status">
-            Selected material: Empty
+        <div class="stat">
+            <strong id="burnedCells">0</strong>
+            <span>Burned cells</span>
         </div>
-
-        <div class="tools">
-            <button id="clear">Clear Grid</button>
+        <div class="stat">
+            <strong id="fuelCells">0</strong>
+            <span>Remaining fuel cells</span>
         </div>
-    </section>
+    </div>
+</section>
 
 </main>
 
 <script>
 const grid = document.getElementById("grid");
-const status = document.getElementById("status");
+const statusText = document.getElementById("status");
 
-const width = 20;
-const height = 14;
+const WIDTH = 20;
+const HEIGHT = 14;
+const TICK_MS = 650;
 
+const MATERIALS = {
+    empty: { fuel: 0, burnRate: 0 },
+    grass: { fuel: 65, burnRate: 12 },
+    wood: { fuel: 100, burnRate: 6 },
+    concrete: { fuel: 0, burnRate: 0 },
+    water: { fuel: 0, burnRate: 0 }
+};
+
+let cells = [];
 let selectedMaterial = "empty";
+let selectedMode = "paint";
+let running = false;
+let timer = null;
+let tickCount = 0;
+
+function makeCell(material = "empty") {
+    return {
+        material,
+        fuel: MATERIALS[material].fuel,
+        burning: false,
+        intensity: 0,
+        burned: false
+    };
+}
 
 function createGrid() {
+    cells = Array.from(
+        { length: WIDTH * HEIGHT },
+        () => makeCell()
+    );
+
+    renderGrid();
+    updateStats();
+}
+
+function renderGrid() {
     grid.innerHTML = "";
 
-    for (let i = 0; i < width * height; i++) {
-        const cell = document.createElement("div");
+    cells.forEach((cell, index) => {
+        const element = document.createElement("div");
 
-        cell.className = "cell empty";
-        cell.dataset.material = "empty";
+        element.className = "cell " + cell.material;
 
-        cell.addEventListener("click", () => {
-            cell.className = "cell " + selectedMaterial;
-            cell.dataset.material = selectedMaterial;
+        if (cell.burning) {
+            element.classList.add("burning");
+        } else if (cell.burned) {
+            element.classList.add("burned");
+        }
+
+        element.title =
+            cell.material +
+            (cell.burning ? " - burning" : "") +
+            " | Fuel: " + Math.round(cell.fuel);
+
+        element.addEventListener("click", () => {
+            handleCellClick(index);
         });
 
-        grid.appendChild(cell);
+        grid.appendChild(element);
+    });
+}
+
+function handleCellClick(index) {
+    const cell = cells[index];
+
+    if (selectedMode === "paint") {
+        if (cell.burning) {
+            statusText.textContent =
+                "Extinguish the fire before replacing this cell.";
+            return;
+        }
+
+        cells[index] = makeCell(selectedMaterial);
+    }
+
+    if (selectedMode === "ignite") {
+        igniteCell(index);
+    }
+
+    if (selectedMode === "extinguish") {
+        extinguishCell(index);
+    }
+
+    renderGrid();
+    updateStats();
+}
+
+function igniteCell(index) {
+    const cell = cells[index];
+
+    if (cell.material === "water" ||
+        cell.material === "concrete" ||
+        cell.material === "empty" ||
+        cell.burned ||
+        cell.fuel <= 0) {
+        statusText.textContent =
+            "This cell cannot ignite. Select a combustible material.";
+        return;
+    }
+
+    if (!cell.burning) {
+        cell.burning = true;
+        cell.intensity = 35;
+        statusText.textContent = "Ignition established.";
     }
 }
 
-document.querySelectorAll("[data-material]").forEach(button => {
+function extinguishCell(index) {
+    const cell = cells[index];
+
+    if (!cell.burning) {
+        statusText.textContent = "No active fire in that cell.";
+        return;
+    }
+
+    cell.burning = false;
+    cell.intensity = 0;
+    cell.burned = true;
+
+    statusText.textContent = "Fire extinguished in selected cell.";
+}
+
+function getNeighbors(index) {
+    const x = index % WIDTH;
+    const y = Math.floor(index / WIDTH);
+
+    const positions = [
+        [x, y - 1],
+        [x + 1, y],
+        [x, y + 1],
+        [x - 1, y]
+    ];
+
+    return positions
+        .filter(([nx, ny]) =>
+            nx >= 0 && nx < WIDTH &&
+            ny >= 0 && ny < HEIGHT
+        )
+        .map(([nx, ny]) => ny * WIDTH + nx);
+}
+
+function simulationStep() {
+    const newIgnitions = [];
+
+    // Existing fires consume fuel.
+    cells.forEach((cell, index) => {
+        if (!cell.burning) return;
+
+        cell.intensity = Math.min(100, cell.intensity + 8);
+        cell.fuel -= MATERIALS[cell.material].burnRate;
+
+        if (cell.fuel <= 0) {
+            cell.fuel = 0;
+            cell.burning = false;
+            cell.burned = true;
+            cell.intensity = 0;
+            return;
+        }
+
+        // Attempt to ignite nearby combustible cells.
+        getNeighbors(index).forEach(neighborIndex => {
+            const neighbor = cells[neighborIndex];
+
+            if (
+                neighbor.burning ||
+                neighbor.burned ||
+                neighbor.fuel <= 0
+            ) return;
+
+            const materialFactor =
+                neighbor.material === "grass" ? 0.48 : 0.24;
+
+            const intensityFactor = cell.intensity / 100;
+
+            const probability =
+                materialFactor * intensityFactor;
+
+            if (Math.random() < probability) {
+                newIgnitions.push(neighborIndex);
+            }
+        });
+    });
+
+    // Apply new ignitions after checking all existing fires.
+    [...new Set(newIgnitions)].forEach(index => {
+        const cell = cells[index];
+
+        if (!cell.burning && !cell.burned && cell.fuel > 0) {
+            cell.burning = true;
+            cell.intensity = 25;
+        }
+    });
+
+    tickCount++;
+    statusText.textContent =
+        "Simulation running. Step: " + tickCount;
+
+    renderGrid();
+    updateStats();
+}
+
+function updateStats() {
+    const active = cells.filter(c => c.burning).length;
+    const burned = cells.filter(c => c.burned).length;
+    const fuel = cells.filter(c =>
+        c.fuel > 0 && !c.burning
+    ).length;
+
+    document.getElementById("activeFires").textContent = active;
+    document.getElementById("burnedCells").textContent = burned;
+    document.getElementById("fuelCells").textContent = fuel;
+}
+
+function startSimulation() {
+    if (running) {
+        stopSimulation();
+        return;
+    }
+
+    running = true;
+    document.getElementById("start").textContent = "Pause Simulation";
+
+    timer = setInterval(simulationStep, TICK_MS);
+    statusText.textContent = "Simulation running.";
+}
+
+function stopSimulation() {
+    running = false;
+    clearInterval(timer);
+    timer = null;
+
+    document.getElementById("start").textContent = "Start Simulation";
+    statusText.textContent = "Simulation paused.";
+}
+
+document.querySelectorAll(".material-button").forEach(button => {
     button.addEventListener("click", () => {
         selectedMaterial = button.dataset.material;
 
-        document.querySelectorAll("[data-material]").forEach(item => {
-            item.classList.remove("active");
-        });
+        document.querySelectorAll(".material-button")
+            .forEach(item => item.classList.remove("active"));
 
         button.classList.add("active");
-
-        status.textContent =
-            "Selected material: " +
-            selectedMaterial.charAt(0).toUpperCase() +
-            selectedMaterial.slice(1);
     });
 });
 
+document.querySelectorAll(".mode-button").forEach(button => {
+    button.addEventListener("click", () => {
+        selectedMode = button.dataset.mode;
+
+        document.querySelectorAll(".mode-button")
+            .forEach(item => item.classList.remove("active"));
+
+        button.classList.add("active");
+    });
+});
+
+document.getElementById("start").addEventListener("click", () => {
+    if (running) stopSimulation();
+    else startSimulation();
+});
+
+document.getElementById("step").addEventListener("click", () => {
+    if (running) return;
+    simulationStep();
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+    stopSimulation();
+
+    cells.forEach(cell => {
+        cell.burning = false;
+        cell.intensity = 0;
+        cell.burned = false;
+        cell.fuel = MATERIALS[cell.material].fuel;
+    });
+
+    tickCount = 0;
+    renderGrid();
+    updateStats();
+    statusText.textContent = "Fire states reset. Materials preserved.";
+});
+
 document.getElementById("clear").addEventListener("click", () => {
+    stopSimulation();
+    tickCount = 0;
     createGrid();
+    statusText.textContent = "Grid cleared.";
 });
 
 createGrid();
